@@ -11,11 +11,12 @@ import json
 
 @pytest.mark.django_db
 def test_create_movie(client):
-    url = reverse('movies:movie-api')
+    url = reverse('movies:movie-list')
     data = {"title": "A New Hope",
-            "genres": json.dumps(["Sci-Fi", "Adventure"])}
+            "genres": ["Sci-Fi", "Adventure"]}
 
-    response = client.post(url, json=data)
+    response = client.post(url, data=json.dumps(
+        data), content_type="application/json")
 
     assert response.status_code == status.HTTP_201_CREATED, response.json()
     assert Movie.objects.filter(title="A New Hope").count() == 1
@@ -24,7 +25,7 @@ def test_create_movie(client):
 @pytest.mark.django_db
 def test_retrieve_movie(client):
     movie = MovieFactory()
-    url = reverse('movies:movie-api-detail', kwargs={"pk": movie.id})
+    url = reverse('movies:movie-detail', kwargs={"pk": movie.id})
 
     response = client.get(url)
 
@@ -40,7 +41,7 @@ def test_retrieve_movie(client):
 def test_update_movie(client):
     movie = MovieFactory()
     new_title = "Updated Movie Title"
-    url = reverse('movies:movie-api-detail', kwargs={"pk": movie.id})
+    url = reverse('movies:movie-detail', kwargs={"pk": movie.id})
     data = {"title": new_title}
 
     response = client.put(url, data=data, content_type="application/json")
@@ -54,7 +55,7 @@ def test_update_movie(client):
 @pytest.mark.django_db
 def test_delete_movie(client):
     movie = MovieFactory()
-    url = reverse('movies:movie-api-detail', kwargs={"pk": movie.id})
+    url = reverse('movies:movie-detail', kwargs={"pk": movie.id})
 
     response = client.delete(url)
 
@@ -67,7 +68,7 @@ def test_delete_movie(client):
 def test_list_movies_with_pagination(client):
     movies = MovieFactory.create_batch(10)
 
-    url = reverse("movies:api-movie-list")
+    url = reverse("movies:movie-list")
 
     response = client.get(url)
 
