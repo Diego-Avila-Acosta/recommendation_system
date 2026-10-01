@@ -1,4 +1,6 @@
 from django.db import models
+from django.conf import settings
+from django.db.models import JSONField
 from django.core.validators import MinValueValidator, MaxValueValidator
 import datetime
 
@@ -24,3 +26,15 @@ class Movie(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class UserMoviePreferences(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="movie_preferences")
+    preferences = JSONField(
+        default=dict, help_text="Stores user preferences for movies like genres, directors, etc.")
+    watch_history = JSONField(
+        default=list, help_text="Stores information about movies the user has watched.")
+
+    def __str__(self):
+        return f"{self.user.username}'s Movie Preferences"
