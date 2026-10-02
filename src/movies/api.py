@@ -1,10 +1,13 @@
+from contextlib import contextmanager
+from typing import Any
+from django.core.files.storage import default_storage
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.request import Request
 from rest_framework.response import Response
 from .models import Movie
-from .serializers import MovieSerializer, AddPreferenceSerializer, AddToWatchHistorySerializer
-from movies.services import add_preference, user_preferences, user_watch_history, add_watch_history
+from .serializers import MovieSerializer, AddPreferenceSerializer, AddToWatchHistorySerializer, GeneralFileUploadSerializer
+from movies.services import add_preference, user_preferences, user_watch_history, add_watch_history, FileProcessor
 
 
 class MovieListCreateAPIView(generics.ListCreateAPIView):
@@ -28,15 +31,14 @@ class UserPreferencesView(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-def get(self, request: Request, user_id: int) -> Response:
-    data = user_preferences(user_id)
-    return Response(data)
+    def get(self, request: Request, user_id: int) -> Response:
+        data = user_preferences(user_id)
+        return Response(data)
 
 
 class WatchHistoryView(APIView):
     def get(self, request: Request, user_id: int) -> Response:
-        data = user_watch_history()
+        data = user_watch_history(user_id)
         return Response(data)
 
     def post(self, request: Request, user_id: int) -> Response:
@@ -47,3 +49,34 @@ class WatchHistoryView(APIView):
             return Response({"message": "Movie added to watch history"}, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status.HTTP_400_BAD_REQUEST)
+
+
+@contextmanager
+def temporary_file(uploaded_file):
+    try:
+        file_name = default_storage.save(uploaded_file.name, uploaded_file)
+        file_path = default_storage.path(file_name)
+
+        yield file_path
+    finally:
+        default_storage.delete(file_name)
+
+
+class GeneralUploadView(APIView):
+    def post(self, request, *args: Any, **kwargs: Any) -> Response:
+        serializer = GeneralFileUploadSerializer(data=request.data)
+
+        if serializer.is_valid():
+            uploaded_file = serializer.validated_data["file"]
+            file_type = uploaded_file.content_type
+
+            with temporary_file(uploaded_file) as file_path:
+                processor = FileProcessor()
+                movies_processed = processor.process(file_path, file_type)
+
+                return Response(
+                    {"message": f"{movies_processed} movies processed successfully"},
+                    status=status.HTTP_201_CREATED
+                )
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
