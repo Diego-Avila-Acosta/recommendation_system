@@ -1,6 +1,7 @@
 import pytest
 from django.urls import reverse
 from django.test import override_settings
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 from rest_framework.test import APIClient
 from movies.models import Movie
@@ -111,7 +112,8 @@ def test_list_movies_with_pagination(client):
 def test_add_and_retrieve_preferences_success(new_preferences, expected_genre):
     user = UserFactory()
     client = APIClient()
-    preferences_url = reverse("user-preferences", kwargs={"user_id": user.id})
+    preferences_url = reverse(
+        "movies:user-preferences", kwargs={"user_id": user.id})
 
     response = client.post(
         preferences_url, {"new_preferences": new_preferences}, format="json")
@@ -133,7 +135,8 @@ def test_add_and_retrieve_preferences_success(new_preferences, expected_genre):
 def test_add_preferences_failure(new_preferences):
     user = UserFactory()
     client = APIClient()
-    preferences_url = reverse("user-preferences", kwargs={"user_id": user.id})
+    preferences_url = reverse(
+        "movies:user-preferences", kwargs={"user_id": user.id})
 
     response = client.post(
         preferences_url, {"new_preferences": new_preferences}, format="json")
@@ -145,7 +148,7 @@ def test_add_and_retrieve_watch_history_with_movie_id():
     user = UserFactory()
     client = APIClient()
     watch_history_url = reverse(
-        "user-watch-history", kwargs={"user_id": user.id})
+        "movies:user-watch-history", kwargs={"user_id": user.id})
 
     movie1 = MovieFactory(title="The Godfather",
                           release_year=1972, genres=["Crime", "Drama"])
@@ -172,11 +175,46 @@ def test_add_invalid_movie_id_to_watch_history():
     user = UserFactory()
     client = APIClient()
     watch_history_url = reverse(
-        "user-watch-history", kwargs={"user_id": user.id})
+        "movies:user-watch-history", kwargs={"user_id": user.id})
 
     invalid_movie_id = 99999
 
     response = client.post(watch_history_url, {
-                           "movie_id": invalid_movie_id}, format=json)
+                           "movie_id": invalid_movie_id}, format="json")
 
     assert response.status_code == 400, "Expected a 400 Bad Request response for an invalid movie ID"
+
+
+test_data = [
+    (
+        "file.csv",
+        "text/csv",
+        b"title,genres,extra_data\ntest,comedy,{\"directors\": [\"name\"]}\n",
+        201,
+    ),
+    (
+        "file.json",
+        "application/json",
+        b'[{"title": "test", "genres": ["comedy"], "extra_data": {"directors": ["name"]}}]',
+        201,
+    ),
+    (
+        "file.txt",
+        "text/plain",
+        b"This is a  test",
+        400,
+    ),
+]
+
+
+@pytest.mark.parametrize("file_name, content_type, file_content, expected_status", test_data)
+@pytest.mark.django_db
+def test_general_upload_view(client: APIClient, file_name: str, content_type: str, file_content: str, expected_status: int):
+    url = reverse("movies:file-upload")
+
+    uploaded_file = SimpleUploadedFile(
+        name=file_name, content=file_content, content_type=content_type)
+
+    response = client.post(url, {"file": uploaded_file}, format="multipart")
+
+    assert response.status_code == expected_status
