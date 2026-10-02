@@ -71,3 +71,19 @@ class WatchHistorySerializer(serializers.Serializer):
     title = serializers.CharField(max_length=255)
     year = serializers.IntegerField()
     genre = serializers.CharField(max_length=255)
+
+
+class GeneralFileUploadSerializer(serializers.Serializer):
+    file = serializers.FileField()
+
+    def validate_file(self, value):
+        if value.size > 10485760:  # 10MB limit
+            raise serializers.ValidationError(
+                "The file size exceeds the limit of 10MB.")
+
+        allowed_types = ["text/csv", "application/json", "application/xml"]
+
+        if value.content_type not in allowed_types:
+            raise serializers.ValidationError("Unsuporrted file type")
+
+        return value
