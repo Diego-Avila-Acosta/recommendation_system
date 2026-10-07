@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from .models import Movie
 from .serializers import MovieSerializer, AddPreferenceSerializer, AddToWatchHistorySerializer, GeneralFileUploadSerializer
 from movies.services import add_preference, user_preferences, user_watch_history, add_watch_history, FileProcessor
+from .tasks import process_file
 
 
 class MovieListCreateAPIView(generics.ListCreateAPIView):
@@ -71,12 +72,11 @@ class GeneralUploadView(APIView):
             file_type = uploaded_file.content_type
 
             with temporary_file(uploaded_file) as file_path:
-                processor = FileProcessor()
-                movies_processed = processor.process(file_path, file_type)
+                process_file.delay(file_path, file_type)
 
                 return Response(
-                    {"message": f"{movies_processed} movies processed successfully"},
-                    status=status.HTTP_201_CREATED
+                    {"message": f"Your file is being processed"},
+                    status=status.HTTP_202_ACCEPTED
                 )
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
