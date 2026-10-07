@@ -190,13 +190,13 @@ test_data = [
         "file.csv",
         "text/csv",
         b"title,genres,extra_data\ntest,comedy,{\"directors\": [\"name\"]}\n",
-        201,
+        202,
     ),
     (
         "file.json",
         "application/json",
         b'[{"title": "test", "genres": ["comedy"], "extra_data": {"directors": ["name"]}}]',
-        201,
+        202,
     ),
     (
         "file.txt",
