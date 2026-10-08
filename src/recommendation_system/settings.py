@@ -138,3 +138,19 @@ REST_FRAMEWORK = {
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = os.getenv(
     "CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
+
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": os.getenv("AWS_STORAGE_BUCKET_NAME", "test-bucket"),
+            # None on real AWS
+            "endpoint_url": os.getenv("AWS_S3_ENDPOINT_URL", "http://localhost:9000"),
+            "access_key": os.getenv("AWS_ACCESS_KEY_ID", "rustfsadmin"),
+            "secret_key": os.getenv("AWS_SECRET_ACCESS_KEY", "rustfsadmin"),
+        },
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
