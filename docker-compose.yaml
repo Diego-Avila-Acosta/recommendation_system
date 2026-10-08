@@ -1,0 +1,46 @@
+services:
+  redis:
+    image: redis:alpine
+    ports:
+      - 6379:6379
+
+  rustfs_perms:
+    image: alpine
+    user: root
+    volumes:
+      - ./volumes:/fix_path
+    command: chown -R 10001:10001 /fix_path
+
+  rustfs-setup:
+    image: rustfs/rc
+    depends_on:
+      - rustfs
+    entrypoint: >
+      /bin/sh -c "
+      rc alias set local http://rustfs:9000 rustfsadmin rustfsadmin;
+      rc rb local/test-bucket;
+      rc mb local/test-bucket &&
+      rc anonymous set public local/test-bucket
+      "
+
+  rustfs:
+    image: rustfs/rustfs:latest
+    depends_on:
+      rustfs_perms:
+        condition: service_completed_successfully
+    volumes:
+      - ./volumes/data:/data
+      - ./volumes/logs:/var/log/rustfs
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_ACCESS_KEY: rustfsadmin
+      RUSTFS_SECRET_KEY: rustfsadmin
+      RUSTFS_OBS_LOGGER_LEVEL: error
+      RUSTFS_OBS_LOG_DIRECTORY: /var/log/rustfs/
+
